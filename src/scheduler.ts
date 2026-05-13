@@ -2,6 +2,7 @@ import type { Client, TextChannel } from 'discord.js'
 import { fetchAds, markAdPosted } from './api.js'
 import type { Ad } from './api.js'
 import { buildAdEmbed } from './formatter.js'
+import { checkInscriptions } from './inscription.js'
 
 const POLL_INTERVAL_MS = 60 * 1000
 
@@ -105,6 +106,7 @@ async function tick(client: Client): Promise<void> {
 export function startScheduler(client: Client): void {
   async function loop(): Promise<void> {
     await tick(client)
+    await checkInscriptions(client)
     timer = setTimeout(loop, POLL_INTERVAL_MS)
   }
   loop()
