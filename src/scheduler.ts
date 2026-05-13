@@ -1,74 +1,112 @@
 import type { Client, TextChannel } from 'discord.js'
-import { fetchAdvertisementPayload } from './api.js'
-import type { AdvertisementPayload } from './api.js'
-import { buildEmbeds } from './formatter.js'
+import { fetchAds, markAdPosted } from './api.js'
+import type { Ad } from './api.js'
+import { buildAdEmbed } from './formatter.js'
+
+const POLL_INTERVAL_MS = 60 * 1000
 
 let timer: ReturnType<typeof setTimeout> | null = null
 
+function isDue(ad: Ad, now: Date): boolean {
+  const last = ad.lastPostedAt ? new Date(ad.lastPostedAt) : null
+
+  switch (ad.scheduleType) {
+    case 'once':
+      return last === null
+
+    case 'minutes': {
+      if (!ad.scheduleInterval) return false
+      if (!last) return true
+      return now.getTime() - last.getTime() >= ad.scheduleInterval * 60 * 1000
+    }
+
+    case 'hours': {
+      if (!ad.scheduleInterval) return false
+      if (!last) return true
+      return now.getTime() - last.getTime() >= ad.scheduleInterval * 3600 * 1000
+    }
+
+    case 'days': {
+      if (!ad.scheduleInterval) return false
+      if (!last) return true
+      return now.getTime() - last.getTime() >= ad.scheduleInterval * 86400 * 1000
+    }
+
+    case 'daily_time': {
+      if (!ad.scheduleTime) return false
+      const [hh, mm] = ad.scheduleTime.split(':').map(Number)
+      const todayTarget = new Date(now)
+      todayTarget.setHours(hh, mm, 0, 0)
+      if (now < todayTarget) return false
+      if (last && last >= todayTarget) return false
+      return true
+    }
+
+    case 'specific_dates': {
+      if (!ad.scheduleDates || ad.scheduleDates.length === 0) return false
+      for (const dateStr of ad.scheduleDates) {
+        const target = new Date(dateStr)
+        if (isNaN(target.getTime())) continue
+        if (target <= now && (!last || last < target)) return true
+      }
+      return false
+    }
+
+    default:
+      return false
+  }
+}
+
 async function tick(client: Client): Promise<void> {
-  let payload: AdvertisementPayload | undefined
+  const channelId = process.env.DISCORD_CHANNEL_ID
+  if (!channelId) {
+    console.warn('[scheduler] DISCORD_CHANNEL_ID não configurado, pulando.')
+    return
+  }
+
+  let ads: Ad[]
   try {
-    payload = await fetchAdvertisementPayload()
+    ads = await fetchAds()
   } catch (err) {
-    console.error('[scheduler] Falha ao buscar configuração da API:', err)
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn(`[scheduler] API indisponível: ${message}`)
     return
   }
 
-  const { config, data } = payload
+  const now = new Date()
+  const due = ads.filter(ad => isDue(ad, now))
 
-  if (!config.enabled) {
-    console.log('[scheduler] Anúncios desabilitados, pulando envio.')
-    return
-  }
-
-  if (!config.channelId) {
-    console.warn('[scheduler] channelId não configurado no painel, pulando envio.')
-    return
-  }
+  if (due.length === 0) return
 
   let channel: TextChannel
   try {
-    const ch = await client.channels.fetch(config.channelId)
+    const ch = await client.channels.fetch(channelId)
     if (!ch || !ch.isTextBased()) {
-      console.error(`[scheduler] Canal ${config.channelId} não encontrado ou não é de texto.`)
+      console.error(`[scheduler] Canal ${channelId} não encontrado ou não é de texto.`)
       return
     }
     channel = ch as TextChannel
   } catch (err) {
-    console.error(`[scheduler] Erro ao buscar canal ${config.channelId}:`, err)
+    console.error(`[scheduler] Erro ao buscar canal ${channelId}:`, err)
     return
   }
 
-  const embeds = buildEmbeds(config.messageType, data)
-
-  try {
-    await channel.send({ embeds })
-    console.log(`[scheduler] Mensagem enviada para #${channel.name} (tipo: ${config.messageType})`)
-  } catch (err) {
-    console.error('[scheduler] Erro ao enviar mensagem:', err)
+  for (const ad of due) {
+    try {
+      await channel.send({ embeds: [buildAdEmbed(ad)] })
+      console.log(`[scheduler] Anúncio #${ad.id} "${ad.title}" enviado para #${channel.name}`)
+      await markAdPosted(ad.id)
+    } catch (err) {
+      console.error(`[scheduler] Erro ao enviar anúncio #${ad.id}:`, err)
+    }
   }
 }
 
 export function startScheduler(client: Client): void {
   async function loop(): Promise<void> {
-    let intervalMinutes = 60
-    let ms: number
-
-    try {
-      const payload = await fetchAdvertisementPayload()
-      intervalMinutes = payload.config.intervalMinutes
-      await tick(client)
-      ms = Math.max(intervalMinutes, 1) * 60 * 1000
-      console.log(`[scheduler] Próximo envio em ${intervalMinutes} minuto(s).`)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      ms = 60 * 1000
-      console.warn(`[scheduler] API indisponível, tentando novamente em 60 segundo(s): ${message}`)
-    }
-
-    timer = setTimeout(loop, ms)
+    await tick(client)
+    timer = setTimeout(loop, POLL_INTERVAL_MS)
   }
-
   loop()
 }
 
