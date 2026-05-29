@@ -51,3 +51,76 @@ export async function markAdPosted(id: number): Promise<void> {
     console.warn(`[api] Falha ao marcar anúncio #${id} como postado: ${res.status}`)
   }
 }
+
+// ─── Inscription API ──────────────────────────────────────────────────────────
+
+export type Participant = {
+  discordId: string
+  displayName: string
+  joinedAt: string
+}
+
+export type InscriptionData = {
+  id: number
+  title: string
+  description: string | null
+  channelId: string | null
+  messageId: string | null
+  participants: Participant[]
+  maxParticipants: number | null
+  expiresAt: string | null
+}
+
+export type InscriptionQueue = {
+  toPost: InscriptionData[]
+  toClose: InscriptionData[]
+}
+
+export async function fetchInscriptionQueue(): Promise<InscriptionQueue> {
+  const res = await fetch(`${baseUrl()}/api/bot/inscription`, {
+    headers: authHeaders(),
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`API retornou ${res.status} ao buscar inscrições`)
+  return res.json() as Promise<InscriptionQueue>
+}
+
+export async function setInscriptionMessage(id: number, messageId: string): Promise<void> {
+  await fetch(`${baseUrl()}/api/bot/inscription/${id}/message`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messageId }),
+  })
+}
+
+export async function joinInscription(
+  id: number,
+  discordId: string,
+  displayName: string,
+): Promise<{ ok: boolean; participants: Participant[]; error?: string }> {
+  const res = await fetch(`${baseUrl()}/api/bot/inscription/${id}/join`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ discordId, displayName }),
+  })
+  return res.json()
+}
+
+export async function leaveInscription(
+  id: number,
+  discordId: string,
+): Promise<{ ok: boolean; participants: Participant[]; error?: string }> {
+  const res = await fetch(`${baseUrl()}/api/bot/inscription/${id}/leave`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ discordId }),
+  })
+  return res.json()
+}
+
+export async function closeInscription(id: number): Promise<void> {
+  await fetch(`${baseUrl()}/api/bot/inscription/${id}/close`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  })
+}
