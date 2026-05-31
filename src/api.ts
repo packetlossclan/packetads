@@ -124,3 +124,77 @@ export async function closeInscription(id: number): Promise<void> {
     headers: authHeaders(),
   })
 }
+
+// ─── Match / Draft API ────────────────────────────────────────────────────────
+
+export type LobbyEntry = {
+  number: number
+  players: Participant[]
+}
+
+export type MatchData = {
+  id: number
+  inscriptionId: number | null
+  lobbies: LobbyEntry[]
+  suplentes: Participant[]
+  channelId: string | null
+  messageId: string | null
+  status: 'draft' | 'active' | 'finished'
+}
+
+export async function startDraft(inscriptionId: number): Promise<MatchData> {
+  const res = await fetch(`${baseUrl()}/api/bot/match`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inscriptionId }),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`API retornou ${res.status} ao iniciar draft: ${body.slice(0, 200)}`)
+  }
+  return res.json() as Promise<MatchData>
+}
+
+export async function getActiveMatch(channelId: string): Promise<MatchData | null> {
+  const res = await fetch(`${baseUrl()}/api/bot/match?channelId=${encodeURIComponent(channelId)}`, {
+    headers: authHeaders(),
+    cache: 'no-store',
+  })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`API retornou ${res.status} ao buscar partida ativa`)
+  return res.json() as Promise<MatchData>
+}
+
+export async function finishLobby(
+  matchId: number,
+  lobbyNumber: number,
+): Promise<{ lobbyResultId: number; scoreUrl: string }> {
+  const res = await fetch(`${baseUrl()}/api/bot/match/${matchId}/finish`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lobbyNumber }),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`API retornou ${res.status} ao terminar lobby: ${body.slice(0, 200)}`)
+  }
+  return res.json() as Promise<{ lobbyResultId: number; scoreUrl: string }>
+}
+
+export async function setMatchMessage(matchId: number, messageId: string): Promise<void> {
+  await fetch(`${baseUrl()}/api/bot/match/${matchId}/message`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messageId }),
+  })
+}
+
+export async function getInscriptionByChannel(channelId: string): Promise<InscriptionData | null> {
+  const res = await fetch(`${baseUrl()}/api/bot/inscription?channelId=${encodeURIComponent(channelId)}`, {
+    headers: authHeaders(),
+    cache: 'no-store',
+  })
+  if (res.status === 404) return null
+  if (!res.ok) return null
+  return res.json() as Promise<InscriptionData | null>
+}
