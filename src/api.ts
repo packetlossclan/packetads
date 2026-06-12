@@ -26,7 +26,7 @@ function baseUrl(): string {
 }
 
 export async function fetchAds(): Promise<Ad[]> {
-  const res = await fetch(`${baseUrl()}/api/bot/advertisement`, {
+  const res = await fetch(`${baseUrl()}/bot/advertisement`, {
     headers: authHeaders(),
     cache: 'no-store',
   })
@@ -42,7 +42,7 @@ export async function fetchAds(): Promise<Ad[]> {
 }
 
 export async function markAdPosted(id: number): Promise<void> {
-  const res = await fetch(`${baseUrl()}/api/packetads/${id}/posted`, {
+  const res = await fetch(`${baseUrl()}/packetads/${id}/posted`, {
     method: 'PATCH',
     headers: authHeaders(),
   })
@@ -77,7 +77,7 @@ export type InscriptionQueue = {
 }
 
 export async function fetchInscriptionQueue(): Promise<InscriptionQueue> {
-  const res = await fetch(`${baseUrl()}/api/bot/inscription`, {
+  const res = await fetch(`${baseUrl()}/bot/inscription`, {
     headers: authHeaders(),
     cache: 'no-store',
   })
@@ -86,7 +86,7 @@ export async function fetchInscriptionQueue(): Promise<InscriptionQueue> {
 }
 
 export async function setInscriptionMessage(id: number, messageId: string): Promise<void> {
-  await fetch(`${baseUrl()}/api/bot/inscription/${id}/message`, {
+  await fetch(`${baseUrl()}/bot/inscription/${id}/message`, {
     method: 'PATCH',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ messageId }),
@@ -98,7 +98,7 @@ export async function joinInscription(
   discordId: string,
   displayName: string,
 ): Promise<{ ok: boolean; participants: Participant[]; error?: string }> {
-  const res = await fetch(`${baseUrl()}/api/bot/inscription/${id}/join`, {
+  const res = await fetch(`${baseUrl()}/bot/inscription/${id}/join`, {
     method: 'POST',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ discordId, displayName }),
@@ -110,7 +110,7 @@ export async function leaveInscription(
   id: number,
   discordId: string,
 ): Promise<{ ok: boolean; participants: Participant[]; error?: string }> {
-  const res = await fetch(`${baseUrl()}/api/bot/inscription/${id}/leave`, {
+  const res = await fetch(`${baseUrl()}/bot/inscription/${id}/leave`, {
     method: 'POST',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ discordId }),
@@ -119,7 +119,7 @@ export async function leaveInscription(
 }
 
 export async function closeInscription(id: number): Promise<void> {
-  await fetch(`${baseUrl()}/api/bot/inscription/${id}/close`, {
+  await fetch(`${baseUrl()}/bot/inscription/${id}/close`, {
     method: 'PATCH',
     headers: authHeaders(),
   })
@@ -143,7 +143,7 @@ export type MatchData = {
 }
 
 export async function startDraft(inscriptionId: number): Promise<MatchData> {
-  const res = await fetch(`${baseUrl()}/api/bot/match`, {
+  const res = await fetch(`${baseUrl()}/bot/match`, {
     method: 'POST',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ inscriptionId }),
@@ -156,7 +156,7 @@ export async function startDraft(inscriptionId: number): Promise<MatchData> {
 }
 
 export async function getActiveMatch(channelId: string): Promise<MatchData | null> {
-  const res = await fetch(`${baseUrl()}/api/bot/match?channelId=${encodeURIComponent(channelId)}`, {
+  const res = await fetch(`${baseUrl()}/bot/match?channelId=${encodeURIComponent(channelId)}`, {
     headers: authHeaders(),
     cache: 'no-store',
   })
@@ -169,7 +169,7 @@ export async function finishLobby(
   matchId: number,
   lobbyNumber: number,
 ): Promise<{ lobbyResultId: number; scoreUrl: string }> {
-  const res = await fetch(`${baseUrl()}/api/bot/match/${matchId}/finish`, {
+  const res = await fetch(`${baseUrl()}/bot/match/${matchId}/finish`, {
     method: 'POST',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ lobbyNumber }),
@@ -182,7 +182,7 @@ export async function finishLobby(
 }
 
 export async function setMatchMessage(matchId: number, messageId: string): Promise<void> {
-  await fetch(`${baseUrl()}/api/bot/match/${matchId}/message`, {
+  await fetch(`${baseUrl()}/bot/match/${matchId}/message`, {
     method: 'PATCH',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ messageId }),
@@ -190,7 +190,7 @@ export async function setMatchMessage(matchId: number, messageId: string): Promi
 }
 
 export async function getInscriptionByChannel(channelId: string): Promise<InscriptionData | null> {
-  const res = await fetch(`${baseUrl()}/api/bot/inscription?channelId=${encodeURIComponent(channelId)}`, {
+  const res = await fetch(`${baseUrl()}/bot/inscription?channelId=${encodeURIComponent(channelId)}`, {
     headers: authHeaders(),
     cache: 'no-store',
   })
