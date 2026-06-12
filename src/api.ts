@@ -125,6 +125,18 @@ export async function closeInscription(id: number): Promise<void> {
   })
 }
 
+export async function mockFillInscription(id: number): Promise<{ ok: boolean; participants: Participant[] }> {
+  const res = await fetch(`${baseUrl()}/bot/inscription/${id}/mock`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`API retornou ${res.status} ao preencher inscrição com mocks: ${body.slice(0, 200)}`)
+  }
+  return res.json()
+}
+
 // ─── Match / Draft API ────────────────────────────────────────────────────────
 
 export type LobbyEntry = {

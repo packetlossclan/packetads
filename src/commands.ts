@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  MessageFlags,
   TextChannel,
   type Client,
   type Message,
@@ -135,7 +136,7 @@ export async function handleMatchFinishButton(
 
   if (!Number.isInteger(matchId) || !Number.isInteger(lobbyNumber)) return
 
-  await interaction.deferReply({ ephemeral: true })
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral })
 
   let result: { lobbyResultId: number; scoreUrl: string }
   try {

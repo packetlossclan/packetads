@@ -4,6 +4,7 @@ import {
   ButtonStyle,
   EmbedBuilder,
   GuildMember,
+  MessageFlags,
   type ButtonInteraction,
   type Client,
   type TextChannel,
@@ -13,10 +14,13 @@ import {
   fetchInscriptionQueue,
   joinInscription,
   leaveInscription,
+  mockFillInscription,
   setInscriptionMessage,
   type InscriptionData,
   type Participant,
 } from './api.js'
+
+const isDev = process.env.NODE_ENV !== 'production'
 
 function buildMessage(
   insc: InscriptionData,
@@ -35,7 +39,7 @@ function buildMessage(
 
   const embed = new EmbedBuilder()
     .setColor(closed ? 0x555555 : 0x61afef)
-    .setTitle(`📋 ${insc.title}`)
+    .setTitle(insc.title)
     .addFields({ name: `Participantes (${countStr})`, value: listText })
     .setTimestamp()
     .setFooter({ text: closed ? 'Inscrições encerradas · PacketLoss' : 'PacketLoss • packetloss.com.br' })
@@ -55,6 +59,16 @@ function buildMessage(
       .setLabel('🚪 Sair da lista')
       .setStyle(ButtonStyle.Secondary),
   )
+
+  if (isDev) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`inscricao:mock:${insc.id}`)
+        .setLabel('🧪 Preencher (dev)')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(isFull),
+    )
+  }
 
   return { embeds: [embed], components: [row] }
 }
@@ -140,13 +154,13 @@ export async function handleInscriptionButton(interaction: ButtonInteraction): P
           : result.error === 'full'
             ? 'As vagas estão esgotadas!'
             : 'Não foi possível realizar a inscrição.'
-      await interaction.reply({ content: msg, ephemeral: true })
+      await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral })
       return
     }
 
     const insc: InscriptionData = {
       id: inscriptionId,
-      title: (interaction.message.embeds[0]?.title ?? '').replace(/^📋 /, ''),
+      title: interaction.message.embeds[0]?.title ?? '',
       description: interaction.message.embeds[0]?.description ?? null,
       channelId: null,
       messageId: interaction.message.id,
@@ -163,13 +177,33 @@ export async function handleInscriptionButton(interaction: ButtonInteraction): P
     const result = await leaveInscription(inscriptionId, discordId)
 
     if (!result.ok) {
-      await interaction.reply({ content: 'Você não está na lista de inscritos.', ephemeral: true })
+      await interaction.reply({ content: 'Você não está na lista de inscritos.', flags: MessageFlags.Ephemeral })
       return
     }
 
     const insc: InscriptionData = {
       id: inscriptionId,
-      title: (interaction.message.embeds[0]?.title ?? '').replace(/^📋 /, ''),
+      title: interaction.message.embeds[0]?.title ?? '',
+      description: interaction.message.embeds[0]?.description ?? null,
+      channelId: null,
+      messageId: interaction.message.id,
+      participants: result.participants,
+      maxParticipants: null,
+      expiresAt: null,
+    }
+
+    await interaction.update(buildMessage(insc, result.participants, false))
+    return
+  }
+
+  if (action === 'mock') {
+    if (!isDev) return
+
+    const result = await mockFillInscription(inscriptionId)
+
+    const insc: InscriptionData = {
+      id: inscriptionId,
+      title: interaction.message.embeds[0]?.title ?? '',
       description: interaction.message.embeds[0]?.description ?? null,
       channelId: null,
       messageId: interaction.message.id,

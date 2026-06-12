@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { Client, Events, GatewayIntentBits } from 'discord.js'
+import { Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js'
 import { startScheduler, stopScheduler } from './scheduler.js'
 import { handleInscriptionButton } from './inscription.js'
 import { handleDraftCommand, handleMatchFinishButton, handleTerminarCommand } from './commands.js'
@@ -58,7 +58,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } catch (err) {
       console.error('[bot] Erro ao processar interação de inscrição:', err)
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Ocorreu um erro. Tente novamente.', ephemeral: true }).catch(() => null)
+        await interaction.reply({ content: 'Ocorreu um erro. Tente novamente.', flags: MessageFlags.Ephemeral }).catch(() => null)
       }
     }
     return
@@ -70,7 +70,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } catch (err) {
       console.error('[bot] Erro ao processar botão de terminar lobby:', err)
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Ocorreu um erro. Tente novamente.', ephemeral: true }).catch(() => null)
+        await interaction.reply({ content: 'Ocorreu um erro. Tente novamente.', flags: MessageFlags.Ephemeral }).catch(() => null)
       }
     }
     return
